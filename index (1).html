@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fashion 3D Calculator — Single File</title>
+
+  <!-- Three.js CDN -->
+  <script src="https://unpkg.com/three@0.159.0/build/three.min.js"></script>
+  <!-- SheetJS (XLSX) CDN for .xlsx export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root{
+      --bg-from: #e8f7fb;
+      --bg-to: #e9fbee;
+      --accent-blue: #42a5f5;
+      --accent-green: #4caf50;
+      --panel: rgba(255,255,255,0.9);
+      --muted: #6b7280;
+      --glass: rgba(255,255,255,0.65);
+    }
+
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;}
+    body{
+      background: linear-gradient(135deg,var(--bg-from),var(--bg-to));
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      color:#0f172a;
+      padding:20px;
+      box-sizing:border-box;
+    }
+
+    .container{max-width:1200px;margin:0 auto;display:grid;gap:20px;grid-template-columns:1fr;align-items:start;}
+    header{display:flex;flex-direction:column;gap:8px;}
+    h1{margin:0;font-size:28px;color:#083344;}
+    p.lead{margin:0;color:var(--muted);font-size:14px}
+
+    /* layout */
+    .grid{display:grid;gap:20px;}
+    @media(min-width:980px){
+      .grid{grid-template-columns:360px 1fr 360px;}
+    }
+
+    .panel{
+      background:var(--panel);
+      border-radius:12px;
+      padding:18px;
+      box-shadow:0 6px 20px rgba(2,6,23,0.06);
+      border:1px solid rgba(10,10,10,0.03);
+    }
+
+    /* Input rows */
+    label{display:block;font-size:13px;margin-bottom:6px;color:#0f172a;font-weight:600}
+    .input-row{display:flex;gap:10px;align-items:center;margin-bottom:12px;}
+    .input-row input[type="number"], .input-row input[type="text"]{
+      width:100%;
+      padding:10px 12px;border-radius:8px;border:1px solid rgba(15,23,42,0.08);
+      font-size:14px;background:rgba(255,255,255,0.98);
+      box-sizing:border-box;
+    }
+    .suffix{background:transparent;padding:8px 10px;border-radius:8px;color:var(--muted);font-size:13px}
+
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:700;color:white;
+      box-shadow:0 6px 14px rgba(66,165,245,0.14);
+      transition:transform .14s ease, box-shadow .14s ease;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn-calc{background:linear-gradient(90deg,var(--accent-blue),#2bb6ff)}
+    .btn-export{background:linear-gradient(90deg,var(--accent-green),#2fcc6a)}
+    .btn-muted{background:transparent;color:#0f172a;border:1px solid rgba(15,23,42,0.06);box-shadow:none}
+
+    /* 3D canvas */
+    .canvas-wrap{width:100%;height:420px;border-radius:10px;overflow:hidden;background:linear-gradient(180deg,#e6f6ff,#ecfbf0);display:flex;align-items:center;justify-content:center}
+    canvas{display:block; width:100%;height:100%}
+
+    /* outputs */
+    .outputs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .card{background:rgba(255,255,255,0.88);padding:12px;border-radius:10px;border:1px solid rgba(2,6,23,0.03)}
+    .card .label{font-size:12px;color:var(--muted)}
+    .card .value{font-size:18px;font-weight:800;color:#053047;margin-top:6px}
+
+    footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Fashion 3D Calculator — Single File</h1>
+      <p class="lead">Seven inputs → four outputs. Animated 3D T-shirt/garment preview. Export results as Excel (.xlsx).</p>
+    </header>
+
+    <main class="grid">
+      <!-- Inputs panel -->
+      <section class="panel" aria-labelledby="inputs-heading">
+        <h2 id="inputs-heading" style="margin-top:0;margin-bottom:10px;color:#0b4b51">Inputs</h2>
+
+        <div id="inputs-form">
+          <div class="input-row">
+            <div style="flex:1">
+              <label for="fabric">Fabric Quantity</label>
+              <input id="fabric" type="number" min="0" step="0.01" placeholder="0" />
+            </div>
+            <div class="suffix">KG</div>
+          </div>
+
+          <div class="input-row">
+            <div style="flex:1">
+              <label for="labor">Trim quantity</label>
+              <input id="labor" type="number" min="0" step="0.01" placeholder="0" />
+            </div>
+            <div class="suffix">KG</div>
+          </div>
+
+          <div class="input-row">
+            <div style="flex:1">
+              <label for="trim">Planned Quantity</label>
+              <input id="trim" type="number" min="0" step="0.01" placeholder="0" />
+            </div>
+            <div class="suffix">pcs</div>
+          </div>
+
+          <div class="input-row">
+            <div style="flex:1">
+              <label for="packaging">Actual Quantity</label>
+              <input id="packaging" type="number" min="0" step="0.01" placeholder="0" />
+            </div>
+            <div class="suffix">pcs</div>
+          </div>
+
+          <div class="input-row">
+            <div style="flex:1">
+              <label for="overhead">Line</label>
+              <input id="overhead" type="number" min="0" step="0.01" placeholder="0" />
+            </div>
+            <div class="suffix">pcs</div>
+          </div>
+
+          <div class="input-row">
+            <div style="flex:1">
+              <label for="markup">Packing</label>
+              <input id="markup" type="number" min="0" step="0.01" placeholder="0" value="0" />
+            </div>
+            <div class="suffix">pcs</div>
+          </div>
+
+          <div class="input-row">
+            <div style="flex:1">
+              <label for="quantity">Shipping</label>
+              <input id="quantity" type="number" min="1" step="1" placeholder="1" value="1" />
+            </div>
+            <div class="suffix">pcs</div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:12px;">
+            <button id="calcBtn" class="btn btn-calc" title="Calculate">Calculate</button>
+            <button id="resetBtn" class="btn btn-muted" title="Reset inputs">Reset</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3D canvas -->
+      <section class="panel" aria-labelledby="preview-heading" style="display:flex;flex-direction:column;gap:12px;">
+        <h2 id="preview-heading" style="margin:0;color:#0b5b3b">3D Garment Preview</h2>
+        <div class="canvas-wrap" id="canvasWrap" role="img" aria-label="Animated 3D shirts">
+          <!-- Three.js will append canvas here -->
+        </div>
+        <div style="font-size:13px;color:var(--muted);">Two animated shirts (blue & green). Use small screens rotated view — purely decorative and fast.</div>
+      </section>
+
+      <!-- Outputs & Export -->
+      <section class="panel" aria-labelledby="outputs-heading">
+        <h2 id="outputs-heading" style="margin-top:0;margin-bottom:10px;color:#0b4b51">Outputs</h2>
+
+        <div class="outputs" style="margin-bottom:14px;">
+          <div class="card">
+            <div class="label">Dif between Fabric & Trim</div>
+            <div class="value" id="outTotal">KG 0</div>
+          </div>
+          <div class="card">
+            <div class="label">Dif between Planned & Actual</div>
+            <div class="value" id="outUnit">pcs </div>
+          </div>
+          <div class="card">
+            <div class="label">Dif between Line & Packing</div>
+            <div class="value" id="outSelling">pcs</div>
+          </div>
+          <div class="card">
+            <div class="label">Dif between Packing & Shipping</div>
+            <div class="value" id="outMargin">0</div>
+          </div>
+        </div>
+
+        <div>
+          <button id="exportBtn" class="btn btn-export" style="width:100%;">Export to Excel (.xlsx)</button>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      Built with <strong>Three.js</strong> + <strong>SheetJS</strong> • Theme: light blue & green
+    </footer>
+  </div>
+
+  <script>
+  (function () {
+    // ---------- Utilities ----------
+    const $ = (id) => document.getElementById(id);
+    const toNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+    const fmtMoneyt = (n, d = 2) => 'KG' + Number(n).toFixed(d);
+    const fmtMoney = (n, d = 2) => 'pcs' + Number(n).toFixed(d);
+    const fmtNum = (n, d = 4) => Number(n).toFixed(d);
+
+    // ---------- Inputs & Outputs ----------
+    const inputs = {
+      fabric: $('fabric'),
+      labor: $('labor'),
+      trim: $('trim'),
+      packaging: $('packaging'),
+      overhead: $('overhead'),
+      markup: $('markup'),
+      quantity: $('quantity')
+    };
+
+    const outputs = {
+      total: $('outTotal'),
+      unit: $('outUnit'),
+      selling: $('outSelling'),
+      margin: $('outMargin')
+    };
+
+    // ---------- Calculation logic ----------
+    function computeValues() {
+      const fabric = toNum(inputs.fabric.value);
+      const labor = toNum(inputs.labor.value);
+      const trim = toNum(inputs.trim.value);
+      const packaging = toNum(inputs.packaging.value);
+      const overhead = toNum(inputs.overhead.value);
+      const markup = toNum(inputs.markup.value);
+      const quantity = toNum(inputs.quantity.value);
+      if (!quantity || quantity < 1) quantity = 1;
+
+      const totalCost = +(fabric - labor).toFixed(2);
+      const unitCost = +(trim - packaging).toFixed(4);
+      const sellingPrice = +(overhead - markup).toFixed(2);
+      const profitMargin = sellingPrice > 0 ? +(markup- quantity).toFixed(2) : 0;
+
+      return { totalCost, unitCost, sellingPrice, profitMargin, inputsSnapshot: { fabric, labor, trim, packaging, overhead, markup, quantity } };
+    }
+
+    function updateUI() {
+      const { totalCost, unitCost, sellingPrice, profitMargin } = computeValues();
+      outputs.total.textContent = fmtMoneyt(totalCost, 0);
+      outputs.unit.textContent = fmtMoney(unitCost, 0);
+      outputs.selling.textContent = fmtMoney(sellingPrice, 0);
+      outputs.margin.textContent = profitMargin.toFixed(0) + '';
+    }
+
+    // Wire calculate & live update (optional)
+    const calcBtn = $('calcBtn');
+    calcBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      updateUI();
+    });
+
+    // Live updates as user types (keeps it snappy)
+    Object.values(inputs).forEach(inp => {
+      inp.addEventListener('input', () => {
+        // debounce small: simple requestAnimationFrame
+        if (window._fashion_rq) cancelAnimationFrame(window._fashion_rq);
+        window._fashion_rq = requestAnimationFrame(updateUI);
+      });
+    });
+
+    // Reset button
+    $('resetBtn').addEventListener('click', () => {
+      inputs.fabric.value = '';
+      inputs.labor.value = '';
+      inputs.trim.value = '';
+      inputs.packaging.value = '';
+      inputs.overhead.value = '';
+      inputs.markup.value = '20';
+      inputs.quantity.value = '1';
+      updateUI();
+    });
+
+    // initial UI
+    updateUI();
+
+    // ---------- Export to .xlsx (SheetJS) ----------
+    $('exportBtn').addEventListener('click', () => {
+      const { totalCost, unitCost, sellingPrice, profitMargin, inputsSnapshot } = computeValues();
+
+      const wsData = [
+        ['Fashion Business - Calculation Export'],
+        [],
+        ['Inputs', 'Value'],
+        ['Fabric Cost', inputsSnapshot.fabric],
+        ['Labor Cost', inputsSnapshot.labor],
+        ['Trim Cost', inputsSnapshot.trim],
+        ['Packaging Cost', inputsSnapshot.packaging],
+        ['Overhead Cost', inputsSnapshot.overhead],
+        ['Markup (%)', inputsSnapshot.markup],
+        ['Quantity', inputsSnapshot.quantity],
+        [],
+        ['Outputs', 'Value'],
+        ['Total Cost', totalCost],
+        ['Unit Cost', unitCost],
+        ['Selling Price', sellingPrice],
+        ['Profit Margin (%)', profitMargin]
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Calculation');
+
+      // set column widths (simple heuristic)
+      const colWidths = wsData[0].map(() => ({wch: 16}));
+      ws['!cols'] = colWidths;
+
+      XLSX.writeFile(wb, 'fashion_calculation.xlsx');
+    });
+
+    // ---------- Three.js 3D Scene ----------
+    const wrap = document.getElementById('canvasWrap');
+
+    // Scene, camera, renderer
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xeaf7fb);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = false;
+    wrap.appendChild(renderer.domElement);
+
+    const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 1000);
+    camera.position.set(0, 1.1, 6);
+
+    // Lighting
+    const amb = new THREE.AmbientLight(0xffffff, 0.65);
+    scene.add(amb);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+    dir.position.set(5, 8, 6);
+    scene.add(dir);
+
+    // ground plane (subtle)
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 40),
+      new THREE.MeshStandardMaterial({ color: 0xe9f8f4, roughness: 1 })
+    );
+    ground.rotation.x = -Math.PI/2;
+    ground.position.y = -1.8;
+    scene.add(ground);
+
+    // group with two shirts
+    const shirts = new THREE.Group();
+
+    function createShirt(colorHex) {
+      const g = new THREE.Group();
+
+      const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.05, roughness: 0.4 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(2, 2.4, 0.45), bodyMat);
+      body.position.y = 0;
+      g.add(body);
+
+      const sleeveGeo = new THREE.CylinderGeometry(0.28, 0.38, 1.3, 12);
+      const sleeveMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.02, roughness: 0.45 });
+
+      const left = new THREE.Mesh(sleeveGeo, sleeveMat);
+      left.position.set(-1.18, 0.15, 0);
+      left.rotation.z = Math.PI/4;
+      g.add(left);
+
+      const right = left.clone();
+      right.position.x = 1.18;
+      right.rotation.z = -Math.PI/4;
+      g.add(right);
+
+      const collar = new THREE.Mesh(new THREE.ConeGeometry(0.7, 0.35, 6), new THREE.MeshStandardMaterial({ color: 0x9be7b5, metalness:0.12, roughness:0.35 }));
+      collar.position.y = 1.25;
+      collar.rotation.x = Math.PI;
+      g.add(collar);
+
+      return g;
+    }
+
+    const shirtA = createShirt(0x4caf50);
+    shirtA.position.x = -1.1;
+    shirtA.scale.set(0.95,0.95,0.95);
+
+    const shirtB = createShirt(0x42a5f5);
+    shirtB.position.x = 1.1;
+    shirtB.scale.set(0.95,0.95,0.95);
+
+    shirts.add(shirtA);
+    shirts.add(shirtB);
+    scene.add(shirts);
+
+    // animation
+    const clock = new THREE.Clock();
+    let rafId = null;
+    function animate() {
+      const t = clock.getElapsedTime();
+      shirts.children.forEach((child, idx) => {
+        child.rotation.y = Math.sin(t * (0.6 + idx * 0.2)) * 0.25 + t * 0.05;
+        child.rotation.x = Math.sin(t * 0.9 + idx) * 0.06;
+        child.position.y = Math.sin(t * 0.8 + idx) * 0.06;
+      });
+      renderer.render(scene, camera);
+      rafId = requestAnimationFrame(animate);
+    }
+
+    // Responsiveness
+    function resize() {
+      const rect = wrap.getBoundingClientRect();
+      renderer.setSize(rect.width, rect.height);
+      camera.aspect = rect.width / rect.height;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resize);
+    // initial
+    resize();
+    animate();
+
+    // cleanup on unload (best practice)
+    window.addEventListener('unload', () => {
+      cancelAnimationFrame(rafId);
+      renderer.dispose();
+    });
+
+  })();
+  </script>
+</body>
+</html>
