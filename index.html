@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Fashion 3D Calculator — Single File</title>
+  <title>Fashion 3D Calculator by Kiro</title>
 
   <!-- Three.js CDN -->
   <script src="https://unpkg.com/three@0.159.0/build/three.min.js"></script>
@@ -88,7 +88,7 @@
 <body>
   <div class="container">
     <header>
-      <h1>Fashion 3D Calculator — Single File</h1>
+      <h1>Fashion 3D Calculator by Kiro</h1>
       <p class="lead">Seven inputs → four outputs. Animated 3D T-shirt/garment preview. Export results as Excel (.xlsx).</p>
     </header>
 
@@ -100,7 +100,7 @@
         <div id="inputs-form">
           <div class="input-row">
             <div style="flex:1">
-              <label for="fabric">Fabric Quantity</label>
+              <label for="fabric">Plan Fabric Quantity</label>
               <input id="fabric" type="number" min="0" step="0.01" placeholder="0" />
             </div>
             <div class="suffix">KG</div>
@@ -108,7 +108,7 @@
 
           <div class="input-row">
             <div style="flex:1">
-              <label for="labor">Trim quantity</label>
+              <label for="labor">Actual Fabric quantity</label>
               <input id="labor" type="number" min="0" step="0.01" placeholder="0" />
             </div>
             <div class="suffix">KG</div>
@@ -116,7 +116,7 @@
 
           <div class="input-row">
             <div style="flex:1">
-              <label for="trim">Planned Quantity</label>
+              <label for="trim">Plan Cut Quantity</label>
               <input id="trim" type="number" min="0" step="0.01" placeholder="0" />
             </div>
             <div class="suffix">pcs</div>
@@ -124,7 +124,7 @@
 
           <div class="input-row">
             <div style="flex:1">
-              <label for="packaging">Actual Quantity</label>
+              <label for="packaging">Actual Cut  Quantity</label>
               <input id="packaging" type="number" min="0" step="0.01" placeholder="0" />
             </div>
             <div class="suffix">pcs</div>
@@ -141,7 +141,7 @@
           <div class="input-row">
             <div style="flex:1">
               <label for="markup">Packing</label>
-              <input id="markup" type="number" min="0" step="0.01" placeholder="0" value="0" />
+              <input id="markup" type="number" min="0" step="0.01" placeholder="0" value="" />
             </div>
             <div class="suffix">pcs</div>
           </div>
@@ -176,20 +176,34 @@
 
         <div class="outputs" style="margin-bottom:14px;">
           <div class="card">
-            <div class="label">Dif between Fabric & Trim</div>
+            <div class="label">Dif between Fabric 
+            Actual & Plan</div>
             <div class="value" id="outTotal">KG 0</div>
           </div>
           <div class="card">
-            <div class="label">Dif between Planned & Actual</div>
-            <div class="value" id="outUnit">pcs </div>
+            <div class="label">Dif between Cut 
+            Actual & Plan</div>
+            <div class="value" id="outUnit">pcs 0 </div>
           </div>
           <div class="card">
             <div class="label">Dif between Line & Packing</div>
-            <div class="value" id="outSelling">pcs</div>
+            <div class="value" id="outSelling">pcs 0</div>
           </div>
           <div class="card">
             <div class="label">Dif between Packing & Shipping</div>
-            <div class="value" id="outMargin">0</div>
+            <div class="value" id="outMargin">pcs 0</div>
+          </div>
+          <div class="card">
+            <div class="label">Plan piece weight</div>
+            <div class="value" id="outf">gm 0</div>
+          </div>
+          <div class="card">
+            <div class="label">Actual Piece weight</div>
+            <div class="value" id="outc">gm 0</div>
+          </div>
+          <div class="card">
+            <div class="label">Dif between Plan & Actual Piece weight</div>
+            <div class="value" id="outp">gm 0</div>
           </div>
         </div>
 
@@ -200,7 +214,7 @@
     </main>
 
     <footer>
-      Built with <strong>Three.js</strong> + <strong>SheetJS</strong> • Theme: light blue & green
+      Built with <strong>Kiro</strong> • Theme: light blue & green
     </footer>
   </div>
 
@@ -211,7 +225,8 @@
     const toNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
     const fmtMoneyt = (n, d = 2) => 'KG' + Number(n).toFixed(d);
     const fmtMoney = (n, d = 2) => 'pcs' + Number(n).toFixed(d);
-    const fmtNum = (n, d = 4) => Number(n).toFixed(d);
+    const fmtNum = (n, d = 4) =>  Number(n).toFixed(d);
+    const fmtMoneytp = (n, d = 2) => 'gm' + Number(n).toFixed(d);
 
     // ---------- Inputs & Outputs ----------
     const inputs = {
@@ -228,7 +243,11 @@
       total: $('outTotal'),
       unit: $('outUnit'),
       selling: $('outSelling'),
-      margin: $('outMargin')
+      margin: $('outMargin'), 
+      actf: $('outf'), 
+      actc: $('outc'), 
+      difp: $('outp')
+      
     };
 
     // ---------- Calculation logic ----------
@@ -246,16 +265,22 @@
       const unitCost = +(trim - packaging).toFixed(4);
       const sellingPrice = +(overhead - markup).toFixed(2);
       const profitMargin = sellingPrice > 0 ? +(markup- quantity).toFixed(2) : 0;
+      const actFabriccut = +(labor*1000 / packaging).toFixed(2); 
+      const planFabriccut = +(fabric*1000 / trim).toFixed(2);
+      const difpiece =+(planFabriccut - actFabriccut).toFixed(2);
 
-      return { totalCost, unitCost, sellingPrice, profitMargin, inputsSnapshot: { fabric, labor, trim, packaging, overhead, markup, quantity } };
+      return { totalCost, unitCost, sellingPrice, profitMargin, actFabriccut, planFabriccut, difpiece, inputsSnapshot: { fabric, labor, trim, packaging, overhead, markup, quantity } };
     }
 
     function updateUI() {
-      const { totalCost, unitCost, sellingPrice, profitMargin } = computeValues();
+      const { totalCost, unitCost, sellingPrice, profitMargin, actFabriccut,planFabriccut,difpiece } = computeValues();
       outputs.total.textContent = fmtMoneyt(totalCost, 0);
       outputs.unit.textContent = fmtMoney(unitCost, 0);
       outputs.selling.textContent = fmtMoney(sellingPrice, 0);
       outputs.margin.textContent = profitMargin.toFixed(0) + '';
+      outputs.actf.textContent = fmtMoneytp(planFabriccut,0);
+      outputs.actc.textContent = fmtMoneytp(actFabriccut,0); 
+      outputs.difp.textContent = fmtMoneytp(difpiece, 0); 
     }
 
     // Wire calculate & live update (optional)
@@ -281,7 +306,7 @@
       inputs.trim.value = '';
       inputs.packaging.value = '';
       inputs.overhead.value = '';
-      inputs.markup.value = '20';
+      inputs.markup.value = '';
       inputs.quantity.value = '1';
       updateUI();
     });
@@ -310,6 +335,7 @@
         ['Unit Cost', unitCost],
         ['Selling Price', sellingPrice],
         ['Profit Margin (%)', profitMargin]
+        
       ];
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
